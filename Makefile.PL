@@ -6,7 +6,8 @@ requires(
 'Apache::Constants' => 0, 
 'Apache::Cookie' => 0, 
 'Apache::Request' => 0, 
-'AppConfig' => 0, 
+'AppConfig' => 0,
+'Crypt::PBKDF2' => 0, #Dependency for the new password handling
 'Clone' => 0, 
 'DBI' => 0, 
 'DBD::Pg' => 1.22,
