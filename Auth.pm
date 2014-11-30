@@ -10,6 +10,7 @@ use Crypt::PBKDF2;
 use Act::Config;
 use Act::User;
 use Act::Util;
+use Act::Util::Password;
 
 use base qw(Apache::AuthCookie);
 
@@ -62,20 +63,17 @@ sub authen_cred ($$\@)
     if ($user->{salt}) {
         $r->log_error("inside pbkdf2");
         #If the user has a defined salt he is using the new PBKDF2 algorithm
-        my $iterations = ($user->{iterations}) ? $user->{iterations} : 10000;
-        my $pbkdf2 = Crypt::PBKDF2->new(
-            hash_class => 'HMACSHA256',
-            iterations => $iterations,
-            salt_len => 4, #32bits
+        $b64digest = Act::Util::Password::crypt_password(
+            $sent_pw,
+            $user->{salt},
+            ($user->{iterations}) ? $user->{iterations} : undef
         );
-        
-        $b64digest = $pbkdf2->PBKDF2_base64($user->{salt}, $sent_pw);
     }else{
         $r->log_error("inside md5sum");
         #User is on the old Digest::MD5 method =/
-        my $digest = Digest::MD5->new;
-        $digest->add(lc $sent_pw);
-        $b64digest = $digest->b64digest();
+        $b64digest = Act::Util::Password::crypt_legacy_password(
+            lc $sent_pw
+        );
     }
     $r->log_error("b64digest: " . $b64digest );
     

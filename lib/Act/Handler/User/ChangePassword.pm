@@ -8,6 +8,7 @@ use Act::Form;
 use Act::Template::HTML;
 use Act::User;
 use Act::Util;
+use Act::Util::Password;
 use Act::TwoStep;
 use Digest::MD5 ();
 
@@ -64,10 +65,31 @@ sub handler
         my ($token, $token_data);
         if ($Request{user}) { # 
             # compare passwords
-            my $digest = Digest::MD5->new;
-            $digest->add(lc $fields->{oldpassword});
-            $digest->b64digest() eq $Request{user}{passwd}
-                or do { $ok = 0; $form->{invalid}{oldpassword} = 1; };
+            my $b64digest;
+            if ($Request{user}{salt}) {
+              #New logic
+              #If the user has a defined salt he is using the new PBKDF2 algorithm
+              $b64digest = Act::Util::Password::crypt_password(
+                  $fields->{oldpassword},
+                  $Request{user}{salt},
+                  ($Request{user}{iterations}) ? $Request{user}{iterations} : undef
+              );
+            }else{
+              #old logic
+              $b64digest = Act::Util::Password::crypt_legacy_password(lc $fields->{oldpassword});
+            }
+            
+            #Just make sure the $b64digest AND the users password isnt empty for some stupid reason
+            if ($b64digest eq '' || $Request{user}{passwd} eq '') {
+                return undef;
+            }
+            
+            
+            
+            if ($b64digest ne $Request{user}{passwd}) {
+              $ok = 0;
+              $form->{invalid}{oldpassword} = 1;
+            }          
         }
         else { # must have a valid twostep token if not logged in
             ($token, $token_data) = Act::TwoStep::verify_form()
@@ -89,9 +111,18 @@ sub handler
                 Act::Auth->send_cookie($sid);
                 Act::TwoStep::remove($token);
             }
+            
+            #Generate a new salt for this user
+            my $new_salt = Act::Util::Password::generate_salt();
+            
             # update user
             $Request{user}->update(
-                passwd => Act::Util::crypt_password( $fields->{newpassword1} )
+              salt => $new_salt,
+              passwd => Act::Util::Password::crypt_password(
+                $fields->{newpassword1},
+                $new_salt,
+                ($Request{user}{iterations}) ? $Request{user}{iterations} : undef
+              )
             );
 
             # redirect to user's main page

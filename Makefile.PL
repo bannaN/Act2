@@ -8,6 +8,8 @@ requires(
 'Apache::Request' => 0, 
 'AppConfig' => 0,
 'Crypt::PBKDF2' => 0, #Dependency for the new password handling
+'Crypt::PBKDF2::Hash::HMACSHA2',
+'Crypt::Random' => 0,
 'Clone' => 0, 
 'DBI' => 0, 
 'DBD::Pg' => 1.22,

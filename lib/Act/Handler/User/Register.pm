@@ -8,6 +8,7 @@ use Act::Template::HTML;
 use Act::TwoStep;
 use Act::User;
 use Act::Util;
+use Act::Util::Password;
 
 use Apache::Constants qw(FORBIDDEN);
 use DateTime;
@@ -115,13 +116,20 @@ sub handler
             	$fields->{timezone} = $Config->general_timezone;
 
                 # generate a random password
-                my ($clear_passwd, $crypt_passwd) = Act::Util::gen_password();
+                my $clear_passwd = Act::Util::Password::gen_password();
+                my $salt = Act::Util::Password::gen_salt();
+                my $crypt_passwd = Act::Util::Password::crypt_password(
+                    $clear_passwd,
+                    $salt
+                );
                 $fields->{passwd} = $crypt_passwd;
 
                 # insert user in database
                 # and participation to this conference
                 my $user = Act::User->create(
                     %$fields,
+                    salt => $salt,
+                    iterations => Act::Util::Password::get_num_passwd_iterations,
                     participation => {
                         tshirt_size => $fields->{tshirt},
                         datetime    => DateTime::Format::Pg->format_timestamp_without_time_zone(DateTime->now()),
